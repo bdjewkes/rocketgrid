@@ -1,0 +1,12 @@
+[package]
+authors = ["Brian Jewkes <bdjewkes@gmail.com>"]
+name = "gameserver"
+version = "0.1.0"
+
+[dependencies]
+rocket = "0.2.2"
+rocket_codegen = "0.2.2"
+rocket_contrib = "0.2.2"
+serde = "0.9.10"
+serde_derive = "0.9.10"
+serde_json = "0.9.8"
