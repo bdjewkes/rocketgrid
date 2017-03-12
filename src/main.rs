@@ -13,7 +13,6 @@ use rocket::State;
 use std::sync::atomic::{AtomicIsize, Ordering};
 use rocket_contrib::{JSON, Value};
 
-
 struct Point(AtomicIsize, AtomicIsize);
 impl Point{
 	fn get_x(&self) -> isize{
@@ -27,19 +26,29 @@ impl Point{
 		JSON(json!({"x": self.get_x(), "y": self.get_y()}))
 	}
 	fn up(&self, distance: isize) {
-		self.1.fetch_add(distance, Ordering::Relaxed);
+        if self.get_y() < HEIGHT - 1{
+			self.1.fetch_add(distance, Ordering::Relaxed);
+		}
 	}
 	fn down(&self, distance: isize) {
-		self.1.fetch_sub(distance, Ordering::Relaxed);
+		if self.get_y() > 0 {
+			self.1.fetch_sub(distance, Ordering::Relaxed);
+		}
 	}
 	fn left(&self, distance: isize) {
-		self.0.fetch_sub(distance, Ordering::Relaxed);
+        if self.get_x() > 0 {
+			self.0.fetch_sub(distance, Ordering::Relaxed);
+		}
 	}
 	fn right(&self, distance: isize) {
-		self.0.fetch_add(distance, Ordering::Relaxed);
+        if self.get_x() < WIDTH - 1 {
+			self.0.fetch_add(distance, Ordering::Relaxed);
+		}
 	}
 }
 
+const HEIGHT: isize = 10;
+const WIDTH: isize = 10;
 
 #[get("/position")]
     fn position(position: State<Point>) -> CORS<JSON<Value>> {
