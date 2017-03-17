@@ -67,7 +67,7 @@ const WIDTH: usize = 10;
 
 #[get("/position")]
     fn position(position_map_state: State<PositionMap>) -> CORS<JSON<Value>> {
-		let sleep_duration = Duration::from_millis(1000);
+		let sleep_duration = Duration::from_millis(16);
 		thread::sleep(sleep_duration);
 
 		let position_map = position_map_state.lock().unwrap();
@@ -89,7 +89,6 @@ const WIDTH: usize = 10;
 #[get("/position/<id>")]
 	fn get_entities(id: usize, position_map_state: State<PositionMap>) -> CORS<Option<JSON<Value>>> {
 		let position_map = position_map_state.lock().unwrap();
-
 		match position_map.get(&id){
 			Some(position) => {
 				CORS::any(Some(position.get_point().json()))
