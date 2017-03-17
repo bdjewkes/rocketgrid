@@ -10,80 +10,129 @@ extern crate serde_json;
 
 use cors::CORS;
 use rocket::State;
-use std::sync::atomic::{AtomicIsize, Ordering};
+use std::sync::atomic::{AtomicUsize, Ordering};
 use rocket_contrib::{JSON, Value};
+use std::collections::HashMap;
+use std::sync::Mutex;
 
-struct Point(AtomicIsize, AtomicIsize);
+#[derive(Serialize, Deserialize)]
+struct SerializeablePoint(usize, usize);
+impl SerializeablePoint{
+	fn json(&self) -> JSON<Value>{
+		JSON(json!(&self))
+	}
+}
+
+struct Point(AtomicUsize, AtomicUsize);
 impl Point{
-	fn get_x(&self) -> isize{
+	fn get_x(&self) -> usize{
 		self.0.load(Ordering::Relaxed)	
 	}
-	fn get_y(&self) -> isize{
+	fn get_y(&self) -> usize{
 		self.1.load(Ordering::Relaxed)
 	}
-
-	fn describe(&self) -> JSON<Value> {
-		JSON(json!({"x": self.get_x(), "y": self.get_y()}))
+    
+	fn get_point(&self) -> SerializeablePoint{
+		SerializeablePoint(self.get_x(), self.get_y())
 	}
-	fn up(&self, distance: isize) {
+
+	fn up(&self, distance: usize) {
         if self.get_y() < HEIGHT - 1{
 			self.1.fetch_add(distance, Ordering::Relaxed);
 		}
 	}
-	fn down(&self, distance: isize) {
+	fn down(&self, distance: usize) {
 		if self.get_y() > 0 {
 			self.1.fetch_sub(distance, Ordering::Relaxed);
 		}
 	}
-	fn left(&self, distance: isize) {
+	fn left(&self, distance: usize) {
         if self.get_x() > 0 {
 			self.0.fetch_sub(distance, Ordering::Relaxed);
 		}
 	}
-	fn right(&self, distance: isize) {
+	fn right(&self, distance: usize) {
         if self.get_x() < WIDTH - 1 {
 			self.0.fetch_add(distance, Ordering::Relaxed);
 		}
 	}
 }
 
-const HEIGHT: isize = 10;
-const WIDTH: isize = 10;
+type PositionMap = Mutex<HashMap<usize, Point>>;
+
+const HEIGHT: usize = 10;
+const WIDTH: usize = 10;
 
 #[get("/position")]
-    fn position(position: State<Point>) -> CORS<JSON<Value>> {
-		CORS::any(JSON(json!({"x": position.get_x(), "y": position.get_y()})))
-}
-
-#[get("/position/up")]
-	fn position_up(position: State<Point>) -> CORS<JSON<Value>> {
-        position.up(1);
-		CORS::any(position.describe())
+    fn position(position_map_state: State<PositionMap>) -> JSON<Value> {
+		let position_map = position_map_state.lock().unwrap();
+		let results: Vec<SerializeablePoint> = position_map.iter().map(|(_,point)| point.get_point()).collect();
+		JSON(json!(results))
 	}
 
-#[get("/position/down")]
-	fn position_down(position: State<Point>) -> CORS<JSON<Value>> {
-        position.down(1);
-		CORS::any(position.describe())
-	}
-#[get("/position/left")]
-	fn position_left(position: State<Point>) -> CORS<JSON<Value>> {
-        position.left(1);
-		CORS::any(position.describe())
-	}
-#[get("/position/right")]
-	fn position_right(position: State<Point>) -> CORS<JSON<Value>>{
-        position.right(1);
-		CORS::any(position.describe())
+#[get("/position/<id>")]
+	fn get_entities(id: usize, position_map_state: State<PositionMap>) -> CORS<JSON<Value>> {
+		let mut position_map = position_map_state.lock().unwrap();
+		let point = Point(AtomicUsize::new(0), AtomicUsize::new(0));
+		let pos = position_map.entry(id).or_insert(point);
+		CORS::any(pos.get_point().json())
 	}
 
+#[get("/position/<id>/up")]
+	fn position_up(id: usize, position_map_state: State<PositionMap>) -> CORS<Option<JSON<Value>>> {
+		let position_map = position_map_state.lock().unwrap();
 
+		match position_map.get(&id){
+			Some(position) => {
+				position.up(1);
+				CORS::any(Some(position.get_point().json()))
+			},
+			None => CORS::any(None)
+		}
+	}
 
+#[get("/position/<id>/down")]
+	fn position_down(id: usize, position_map_state: State<PositionMap>) -> CORS<Option<JSON<Value>>> {
+		let position_map = position_map_state.lock().unwrap();
+
+		match position_map.get(&id){
+			Some(position) => { 
+                position.down(1);
+				CORS::any(Some(position.get_point().json()))
+			},
+            None => CORS::any(None)
+		}
+	}
+
+#[get("/position/<id>/left")]
+	fn position_left(id: usize, position_map_state: State<PositionMap>) -> CORS<Option<JSON<Value>>> {
+		let position_map = position_map_state.lock().unwrap();
+
+		match position_map.get(&id){
+			Some(position) => { 
+				position.left(1);
+				CORS::any(Some(position.get_point().json()))
+			},
+            None => CORS::any(None)
+		}
+	}
+#[get("/position/<id>/right")]
+	fn position_right(id: usize, position_map_state: State<PositionMap>) -> CORS<Option<JSON<Value>>>{
+		let position_map = position_map_state.lock().unwrap();
+		match position_map.get(&id){
+			Some(position) => {
+				position.right(1);
+				CORS::any(Some(position.get_point().json()))
+			}
+			None => CORS::any(None)
+		}
+	}
 
 fn main() {
 	rocket::ignite()
-		.mount("/", routes![position, position_up, position_left, position_right, position_down])
-		.manage(Point(AtomicIsize::new(0), AtomicIsize::new(0)))
+		.mount("/", routes![position, position_up, position_left, position_right, position_down, get_entities])
+		.manage(Point(AtomicUsize::new(0), AtomicUsize::new(0)))
+		.manage(Mutex::new(HashMap::<usize, Point>::new()))
 		.launch();
 }
 
