@@ -14,6 +14,8 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 use rocket_contrib::{JSON, Value};
 use std::collections::HashMap;
 use std::sync::Mutex;
+use std::thread;
+use std::time::Duration;
 
 #[derive(Serialize, Deserialize)]
 struct SerializeablePoint(usize, usize);
@@ -64,18 +66,36 @@ const HEIGHT: usize = 10;
 const WIDTH: usize = 10;
 
 #[get("/position")]
-    fn position(position_map_state: State<PositionMap>) -> JSON<Value> {
+    fn position(position_map_state: State<PositionMap>) -> CORS<JSON<Value>> {
+		let sleep_duration = Duration::from_millis(1000);
+		thread::sleep(sleep_duration);
+
 		let position_map = position_map_state.lock().unwrap();
 		let results: Vec<SerializeablePoint> = position_map.iter().map(|(_,point)| point.get_point()).collect();
-		JSON(json!(results))
+		CORS::any(JSON(json!(results)))
+	}
+
+#[get("/position/new")]
+	fn new_position(entity_count: State<AtomicUsize>, position_map_state: State<PositionMap>) -> CORS<JSON<Value>> {
+		let mut position_map = position_map_state.lock().unwrap();
+		let position_num = entity_count.fetch_add(1, Ordering::Relaxed);
+
+		let point = Point(AtomicUsize::new(0), AtomicUsize::new(0));
+		position_map.entry(position_num).or_insert(point);
+		CORS::any(JSON(json!(position_num)))
+
 	}
 
 #[get("/position/<id>")]
-	fn get_entities(id: usize, position_map_state: State<PositionMap>) -> CORS<JSON<Value>> {
-		let mut position_map = position_map_state.lock().unwrap();
-		let point = Point(AtomicUsize::new(0), AtomicUsize::new(0));
-		let pos = position_map.entry(id).or_insert(point);
-		CORS::any(pos.get_point().json())
+	fn get_entities(id: usize, position_map_state: State<PositionMap>) -> CORS<Option<JSON<Value>>> {
+		let position_map = position_map_state.lock().unwrap();
+
+		match position_map.get(&id){
+			Some(position) => {
+				CORS::any(Some(position.get_point().json()))
+			}
+			None => CORS::any(None)
+		}
 	}
 
 #[get("/position/<id>/up")]
@@ -110,6 +130,7 @@ const WIDTH: usize = 10;
 
 		match position_map.get(&id){
 			Some(position) => { 
+				position_map.get(&id).unwrap();
 				position.left(1);
 				CORS::any(Some(position.get_point().json()))
 			},
@@ -130,8 +151,8 @@ const WIDTH: usize = 10;
 
 fn main() {
 	rocket::ignite()
-		.mount("/", routes![position, position_up, position_left, position_right, position_down, get_entities])
-		.manage(Point(AtomicUsize::new(0), AtomicUsize::new(0)))
+		.mount("/", routes![position, position_up, position_left, position_right, position_down, get_entities, new_position])
+		.manage(AtomicUsize::new(0))
 		.manage(Mutex::new(HashMap::<usize, Point>::new()))
 		.launch();
 }
