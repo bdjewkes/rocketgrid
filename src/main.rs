@@ -67,9 +67,6 @@ const WIDTH: usize = 10;
 
 #[get("/position")]
     fn position(position_map_state: State<PositionMap>) -> CORS<JSON<Value>> {
-		let sleep_duration = Duration::from_millis(16);
-		thread::sleep(sleep_duration);
-
 		let position_map = position_map_state.lock().unwrap();
 		let results: Vec<SerializeablePoint> = position_map.iter().map(|(_,point)| point.get_point()).collect();
 		CORS::any(JSON(json!(results)))
