@@ -94,60 +94,28 @@ const WIDTH: usize = 10;
 		}
 	}
 
-#[get("/position/<id>/up")]
-	fn position_up(id: usize, position_map_state: State<PositionMap>) -> CORS<Option<JSON<Value>>> {
+#[get("/position/<id>/<direction>")]
+	fn position_move(id: usize, direction: &str, position_map_state: State<PositionMap>) -> CORS<Option<JSON<Value>>> {
 		let position_map = position_map_state.lock().unwrap();
 
 		match position_map.get(&id){
 			Some(position) => {
-				position.up(1);
+				match direction {
+					"left" => position.left(1),
+					"right" => position.right(1),
+					"down" => position.down(1),
+					"up" => position.up(1),
+					_ => return CORS::any(None),
+				}
 				CORS::any(Some(position.get_point().json()))
 			},
-			None => CORS::any(None)
-		}
-	}
-
-#[get("/position/<id>/down")]
-	fn position_down(id: usize, position_map_state: State<PositionMap>) -> CORS<Option<JSON<Value>>> {
-		let position_map = position_map_state.lock().unwrap();
-
-		match position_map.get(&id){
-			Some(position) => { 
-                position.down(1);
-				CORS::any(Some(position.get_point().json()))
-			},
-            None => CORS::any(None)
-		}
-	}
-
-#[get("/position/<id>/left")]
-	fn position_left(id: usize, position_map_state: State<PositionMap>) -> CORS<Option<JSON<Value>>> {
-		let position_map = position_map_state.lock().unwrap();
-
-		match position_map.get(&id){
-			Some(position) => { 
-				position_map.get(&id).unwrap();
-				position.left(1);
-				CORS::any(Some(position.get_point().json()))
-			},
-            None => CORS::any(None)
-		}
-	}
-#[get("/position/<id>/right")]
-	fn position_right(id: usize, position_map_state: State<PositionMap>) -> CORS<Option<JSON<Value>>>{
-		let position_map = position_map_state.lock().unwrap();
-		match position_map.get(&id){
-			Some(position) => {
-				position.right(1);
-				CORS::any(Some(position.get_point().json()))
-			}
 			None => CORS::any(None)
 		}
 	}
 
 fn main() {
 	rocket::ignite()
-		.mount("/", routes![position, position_up, position_left, position_right, position_down, get_entities, new_position])
+		.mount("/", routes![position, position_move, get_entities, new_position])
 		.manage(AtomicUsize::new(0))
 		.manage(Mutex::new(HashMap::<usize, Point>::new()))
 		.launch();
