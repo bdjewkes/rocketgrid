@@ -31,6 +31,10 @@ window.onkeyup = function(e){
     }
 }
 
+interface Entity{
+    position: number[];
+}
+
 function main(){
     initEntity();
     requestStateUpdate();
@@ -42,7 +46,7 @@ let stateSocket: WebSocket;
 function initializeSocket(address: string) {
     stateSocket = new WebSocket(address);
     stateSocket.onopen = () => {
-        //stateSocket.send("Client ready to receive");
+        stateSocket.send("Client ready to receive");
     }
     stateSocket.onmessage = (msg) => {
         console.log(msg.data);
@@ -83,9 +87,9 @@ function movePos(direction: string){
         })
 }
 
-function update(positions: Array<Array<number>>) {
+function update(entities: Entity[]) {
     let contents: boolean[][] = [];
-    console.log("Positions: " +positions.length)
+    console.log("Positions: " +entities.length)
     for(let i = 0; i < 10; i++){
         let row: boolean[] = [];
         for(let x = 0; x < 10; x++){
@@ -94,11 +98,11 @@ function update(positions: Array<Array<number>>) {
         contents.push(row);
     }
 
-    for(let i = 0; i < positions.length; i++)
+    for(let i = 0; i < entities.length; i++)
     {
-        let pos = positions[i];
-        console.log(pos + " in "+  positions);
-        contents[pos[0]][pos[1]] = true;
+        let entity = entities[i];
+        console.log(entity);
+        contents[entity.position[0]][entity.position[1]] = true;
     }
 
     ReactDOM.render(
