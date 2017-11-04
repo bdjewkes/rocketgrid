@@ -104,6 +104,6 @@ fn main() {
         .manage(AtomicUsize::new(0))
         .manage(RwLock::new(HashMap::<usize, Entity>::new()))
         .manage(Mutex::new(server))
-        //.attach(CORS())
+        .attach(CORS())
         .launch();
 }
