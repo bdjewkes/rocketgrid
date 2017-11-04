@@ -3,10 +3,12 @@ import * as ReactDOM from "react-dom";
 import axios from "axios";
 
 import { Grid } from "./components/Grid";
+import { Config } from './config';
 
-let address = "localhost";
-let positionUri = "http://" + address + ":8000/position";
+declare let config: Config; 
+let positionUri = config.api_root + ":" + config.api_port + "/position";
 let entitiyNum = Number.MAX_VALUE;
+console.log(config);
 
 let waitingForInputResponse = false;
 
@@ -39,7 +41,7 @@ interface Entity{
 function main(){
     initEntity();
     requestStateUpdate();
-    initializeSocket("ws://" + address + ":3012")
+    initializeSocket(config.ws_root + ":" + config.ws_port)
 }
 
 
