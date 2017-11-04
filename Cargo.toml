@@ -10,4 +10,4 @@ rocket_contrib = ""
 serde = ""
 serde_derive = ""
 serde_json = ""
-ws=""
+ws = { git = "https://github.com/housleyjk/ws-rs" }

@@ -4,7 +4,8 @@ import axios from "axios";
 
 import { Grid } from "./components/Grid";
 
-let positionUri = "http://localhost:8000/position"; //"http://138.68.48.117:81/position"; //
+let address = "localhost";
+let positionUri = "http://" + address + ":8000/position";
 let entitiyNum = Number.MAX_VALUE;
 
 let waitingForInputResponse = false;
@@ -38,16 +39,14 @@ interface Entity{
 function main(){
     initEntity();
     requestStateUpdate();
-    initializeSocket("ws://127.0.0.1:3012")
+    initializeSocket("ws://" + address + ":3012")
 }
 
 
 let stateSocket: WebSocket;
 function initializeSocket(address: string) {
     stateSocket = new WebSocket(address);
-    stateSocket.onopen = () => {
-        stateSocket.send("Client ready to receive");
-    }
+    stateSocket.onopen = () => { }
     stateSocket.onmessage = (msg) => {
         console.log(msg.data);
         update(JSON.parse(msg.data));
@@ -55,11 +54,13 @@ function initializeSocket(address: string) {
 }
 
 function requestStateUpdate(){
+    console.log("Updating position");
     axios.get(positionUri)
         .then(res => update(res.data))
 }
 
 function reset(){
+    console.log("Resetting");
     axios.get(positionUri + "/reset")
          .then(resolve => {
              waitingForInputResponse = false;
@@ -72,9 +73,11 @@ function sleep(ms: Number){
 }
 
 function initEntity(){
+    console.log("Initializing entity");
     axios.get(positionUri + "/new")
             .then(res => {
                 entitiyNum = res.data;
+                requestStateUpdate();
             })
             .catch(() => initEntity())
 }

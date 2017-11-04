@@ -45,51 +45,16 @@
 /***/ (function(module, exports, __webpack_require__) {
 
 	"use strict";
-	var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
-	    return new (P || (P = Promise))(function (resolve, reject) {
-	        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
-	        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
-	        function step(result) { result.done ? resolve(result.value) : new P(function (resolve) { resolve(result.value); }).then(fulfilled, rejected); }
-	        step((generator = generator.apply(thisArg, _arguments || [])).next());
-	    });
-	};
-	var __generator = (this && this.__generator) || function (thisArg, body) {
-	    var _ = { label: 0, sent: function() { if (t[0] & 1) throw t[1]; return t[1]; }, trys: [], ops: [] }, f, y, t;
-	    return { next: verb(0), "throw": verb(1), "return": verb(2) };
-	    function verb(n) { return function (v) { return step([n, v]); }; }
-	    function step(op) {
-	        if (f) throw new TypeError("Generator is already executing.");
-	        while (_) try {
-	            if (f = 1, y && (t = y[op[0] & 2 ? "return" : op[0] ? "throw" : "next"]) && !(t = t.call(y, op[1])).done) return t;
-	            if (y = 0, t) op = [0, t.value];
-	            switch (op[0]) {
-	                case 0: case 1: t = op; break;
-	                case 4: _.label++; return { value: op[1], done: false };
-	                case 5: _.label++; y = op[1]; op = [0]; continue;
-	                case 7: op = _.ops.pop(); _.trys.pop(); continue;
-	                default:
-	                    if (!(t = _.trys, t = t.length > 0 && t[t.length - 1]) && (op[0] === 6 || op[0] === 2)) { _ = 0; continue; }
-	                    if (op[0] === 3 && (!t || (op[1] > t[0] && op[1] < t[3]))) { _.label = op[1]; break; }
-	                    if (op[0] === 6 && _.label < t[1]) { _.label = t[1]; t = op; break; }
-	                    if (t && _.label < t[2]) { _.label = t[2]; _.ops.push(op); break; }
-	                    if (t[2]) _.ops.pop();
-	                    _.trys.pop(); continue;
-	            }
-	            op = body.call(thisArg, _);
-	        } catch (e) { op = [6, e]; y = 0; } finally { f = t = 0; }
-	        if (op[0] & 5) throw op[1]; return { value: op[0] ? op[1] : void 0, done: true };
-	    }
-	};
 	Object.defineProperty(exports, "__esModule", { value: true });
 	var React = __webpack_require__(1);
 	var ReactDOM = __webpack_require__(32);
 	var axios_1 = __webpack_require__(178);
 	var Grid_1 = __webpack_require__(203);
-	var positionUri = "http://localhost:8000/position"; //"http://138.68.48.117:81/position"; //
+	var positionUri = "http://138.68.48.117:81/position"; //
 	var entitiyNum = Number.MAX_VALUE;
-	var active = false;
+	var waitingForInputResponse = false;
 	window.onkeyup = function (e) {
-	    if (!active)
+	    if (waitingForInputResponse)
 	        return;
 	    var key = e.keyCode ? e.keyCode : e.which;
 	    if (key == 38) {
@@ -104,35 +69,35 @@
 	    else if (e.keyCode == 39) {
 	        movePos("right");
 	    }
+	    else if (e.keyCode == 13) {
+	        requestStateUpdate();
+	    }
 	};
-	main();
-	function poll() {
-	    return __awaiter(this, void 0, void 0, function () {
-	        return __generator(this, function (_a) {
-	            switch (_a.label) {
-	                case 0:
-	                    axios_1.default.get(positionUri).then(function (res) {
-	                        update(res.data);
-	                    });
-	                    return [4 /*yield*/, sleep(100)];
-	                case 1:
-	                    _a.sent();
-	                    if (active) {
-	                        poll();
-	                    }
-	                    return [2 /*return*/];
-	            }
-	        });
-	    });
-	}
 	function main() {
 	    initEntity();
+	    requestStateUpdate();
+	    initializeSocket("ws://127.0.0.1:3012");
+	}
+	var stateSocket;
+	function initializeSocket(address) {
+	    stateSocket = new WebSocket(address);
+	    stateSocket.onopen = function () {
+	        stateSocket.send("Client ready to receive");
+	    };
+	    stateSocket.onmessage = function (msg) {
+	        console.log(msg.data);
+	        update(JSON.parse(msg.data));
+	    };
+	}
+	function requestStateUpdate() {
+	    axios_1.default.get(positionUri)
+	        .then(function (res) { return update(res.data); });
 	}
 	function reset() {
 	    axios_1.default.get(positionUri + "/reset")
 	        .then(function (resolve) {
-	        active = false;
-	        poll();
+	        waitingForInputResponse = false;
+	        requestStateUpdate();
 	    });
 	}
 	function sleep(ms) {
@@ -142,17 +107,19 @@
 	    axios_1.default.get(positionUri + "/new")
 	        .then(function (res) {
 	        entitiyNum = res.data;
-	        active = true;
-	        poll();
 	    })
 	        .catch(function () { return initEntity(); });
 	}
 	function movePos(direction) {
-	    axios_1.default.get(positionUri + "/" + entitiyNum + "/" + direction).then(function (res) {
+	    waitingForInputResponse = true;
+	    axios_1.default.get(positionUri + "/" + entitiyNum + "/" + direction)
+	        .then(function (res) {
+	        waitingForInputResponse = false;
 	    });
 	}
-	function update(positions) {
+	function update(entities) {
 	    var contents = [];
+	    console.log("Positions: " + entities.length);
 	    for (var i = 0; i < 10; i++) {
 	        var row = [];
 	        for (var x = 0; x < 10; x++) {
@@ -160,9 +127,10 @@
 	        }
 	        contents.push(row);
 	    }
-	    for (var i = 0; i < positions.length; i++) {
-	        var pos = positions[i];
-	        contents[pos[0]][pos[1]] = true;
+	    for (var i = 0; i < entities.length; i++) {
+	        var entity = entities[i];
+	        console.log(entity);
+	        contents[entity.position[0]][entity.position[1]] = true;
 	    }
 	    ReactDOM.render(React.createElement("div", null,
 	        React.createElement(Grid_1.Grid, { width: 10, height: 10, cellContents: contents }),
@@ -170,6 +138,7 @@
 	            React.createElement("button", { onClick: initEntity }, "Start"),
 	            React.createElement("button", { onClick: reset }, "Reset"))), document.getElementById("example"));
 	}
+	main();
 
 
 /***/ }),
