@@ -6,7 +6,7 @@ import { Grid } from "./components/Grid";
 import { Config } from './config';
 
 declare let config: Config; 
-let positionUri = config.api_root + ":" + config.api_port + "/position";
+let positionUri = config.api_root + "/position";
 let entitiyNum = Number.MAX_VALUE;
 console.log(config);
 
@@ -41,7 +41,7 @@ interface Entity{
 function main(){
     initEntity();
     requestStateUpdate();
-    initializeSocket(config.ws_root + ":" + config.ws_port)
+    initializeSocket(config.ws_root)
 }
 
 
